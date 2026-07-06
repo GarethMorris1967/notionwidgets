@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Word Clock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1a1a1a;
+    --muted: #6b6b6b;
+  }
+  [data-theme="dark"] {
+    --bg: #191919;
+    --fg: #f2f2f2;
+    --muted: #9b9b9b;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'Inter', -apple-system, sans-serif;
+    transition: background 0.4s ease, color 0.4s ease;
+    padding: 2rem;
+  }
+  #clock {
+    font-size: clamp(1.5rem, 5vw, 2.6rem);
+    font-weight: 300;
+    line-height: 1.4;
+    text-align: center;
+    max-width: 22ch;
+  }
+  #clock .hour {
+    font-weight: 700;
+  }
+  #date {
+    margin-top: 1.25rem;
+    font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+    font-weight: 300;
+    color: var(--muted);
+    text-align: center;
+  }
+  .fade {
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+  .fade.show {
+    opacity: 1;
+  }
+  #toggle {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: 1px solid var(--muted);
+    color: var(--fg);
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 400;
+    padding: 0.4rem 0.8rem;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+  #toggle:hover {
+    background: var(--fg);
+    color: var(--bg);
+  }
+</style>
+</head>
+<body>
+  <button id="toggle" aria-label="Toggle dark mode">Dark</button>
+  <div id="clock" class="fade">loading…</div>
+  <div id="date" class="fade"></div>
+
+  <script>
+    const ones = ['zero','one','two','three','four','five','six','seven','eight','nine',
+      'ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];
+    const tens = {2:'twenty',3:'thirty',4:'forty',5:'fifty'};
+    const ordinals = ['zeroth','first','second','third','fourth','fifth','sixth','seventh','eighth','ninth',
+      'tenth','eleventh','twelfth','thirteenth','fourteenth','fifteenth','sixteenth','seventeenth','eighteenth','nineteenth',
+      'twentieth','twenty-first','twenty-second','twenty-third','twenty-fourth','twenty-fifth','twenty-sixth','twenty-seventh','twenty-eighth','twenty-ninth',
+      'thirtieth','thirty-first'];
+
+    const TZ = 'America/Edmonton';
+
+    function numToWords(n) {
+      if (n < 20) return ones[n];
+      if (n % 10 === 0) return tens[Math.floor(n / 10)];
+      return tens[Math.floor(n / 10)] + '-' + ones[n % 10];
+    }
+
+    function getMountainParts() {
+      const now = new Date();
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: TZ,
+        hour: 'numeric', minute: 'numeric', hour12: false,
+        weekday: 'long', day: 'numeric', month: 'long'
+      }).formatToParts(now);
+      const map = {};
+      for (const p of parts) map[p.type] = p.value;
+      let hour = parseInt(map.hour, 10);
+      if (hour === 24) hour = 0;
+      return {
+        hour,
+        minute: parseInt(map.minute, 10),
+        weekday: map.weekday,
+        day: parseInt(map.day, 10),
+        month: map.month
+      };
+    }
+
+    let lastText = '';
+
+    function update() {
+      const t = getMountainParts();
+
+      const hourWords = numToWords(t.hour);
+      let minuteWords;
+      if (t.minute === 0) minuteWords = "o'clock";
+      else if (t.minute < 10) minuteWords = 'oh ' + numToWords(t.minute);
+      else minuteWords = numToWords(t.minute);
+
+      const clockHTML = `<span class="hour">${hourWords}</span> ${minuteWords}`;
+      const dateText = `${t.weekday}, the ${ordinals[t.day]} of ${t.month}`;
+
+      const combined = clockHTML + '|' + dateText;
+      if (combined === lastText) return;
+      lastText = combined;
+
+      const clockEl = document.getElementById('clock');
+      const dateEl = document.getElementById('date');
+
+      clockEl.classList.remove('show');
+      dateEl.classList.remove('show');
+
+      setTimeout(() => {
+        clockEl.innerHTML = clockHTML;
+        dateEl.textContent = dateText;
+        clockEl.classList.add('show');
+        dateEl.classList.add('show');
+      }, 250);
+    }
+
+    const toggle = document.getElementById('toggle');
+    let dark = false;
+    toggle.addEventListener('click', () => {
+      dark = !dark;
+      document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      toggle.textContent = dark ? 'Light' : 'Dark';
+    });
+
+    update();
+    setInterval(update, 5000);
+  </script>
+</body>
+</html>
